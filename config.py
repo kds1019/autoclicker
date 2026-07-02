@@ -72,6 +72,14 @@ SUBMIT_BUTTON_KEYWORDS = [
     "check answer",
 ]
 
+# Text that looks like a Submit button but is NOT a quiz question
+# (e.g. CtSys has a persistent "Submit Feedback" chat widget on every page).
+# Any candidate whose text contains one of these is ignored by question detection.
+SUBMIT_EXCLUDE_KEYWORDS = [
+    "feedback",
+    "chat",
+]
+
 # Additional question detection keywords (in page text)
 QUESTION_KEYWORDS = [
     "question",

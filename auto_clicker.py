@@ -89,8 +89,13 @@ class TrainingAutoClicker:
                 os.system('beep -f {} -l {}'.format(BEEP_FREQUENCY, BEEP_DURATION))
             time.sleep(0.2)
     
-    def find_button(self, keywords, debug=False):
-        """Find button by text content or attributes"""
+    def find_button(self, keywords, debug=False, exclude=None):
+        """Find button by text content or attributes.
+
+        exclude: optional list of substrings; any candidate whose text
+        contains one of these is skipped (used to ignore non-quiz widgets
+        like a "Submit Feedback" chat button).
+        """
         all_buttons = []
 
         def _visible(el):
@@ -161,6 +166,11 @@ class TrainingAutoClicker:
         for keyword in keywords:
             for btn_type, btn_text, element in all_buttons:
                 if keyword.lower() in btn_text.lower():
+                    # Skip excluded (non-quiz) widgets like "Submit Feedback"
+                    if exclude and any(x.lower() in btn_text.lower() for x in exclude):
+                        if debug:
+                            print(f"  ⏭️  Ignoring excluded match in <{btn_type}>: '{btn_text}'")
+                        continue
                     if debug:
                         print(f"  ✅ Matched '{keyword}' in <{btn_type}>: '{btn_text}'")
                     return element
@@ -258,7 +268,7 @@ class TrainingAutoClicker:
             # Try to find submit button in the content frame first
             try:
                 self.driver.switch_to.frame(CONTENT_FRAME)
-                submit_button = self.find_button(SUBMIT_BUTTON_KEYWORDS, debug=False)
+                submit_button = self.find_button(SUBMIT_BUTTON_KEYWORDS, debug=False, exclude=SUBMIT_EXCLUDE_KEYWORDS)
                 self.driver.switch_to.default_content()
             except:
                 # No "sco" frame - try main page (popup windows)
@@ -266,7 +276,7 @@ class TrainingAutoClicker:
                     self.driver.switch_to.default_content()
                 except:
                     pass
-                submit_button = self.find_button(SUBMIT_BUTTON_KEYWORDS, debug=False)
+                submit_button = self.find_button(SUBMIT_BUTTON_KEYWORDS, debug=False, exclude=SUBMIT_EXCLUDE_KEYWORDS)
 
             if submit_button:
                 try:
