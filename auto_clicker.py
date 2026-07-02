@@ -191,19 +191,20 @@ class TrainingAutoClicker:
                 print(f"   Window {i+1}: '{self.driver.title}'")
 
             if len(all_windows) > 1:
-                # Switch to the last/newest window (could be tab or popup)
+                # Course opened in a new window/tab (e.g. FlightSafety popup)
                 self.driver.switch_to.window(all_windows[-1])
                 print(f"✅ Switched to newest window/tab: '{self.driver.title}'")
-
-                # Wait a moment for content to load
-                time.sleep(2)  # Increased wait time
-
-                # Mute the course audio
-                self.mute_tab()
-                return True
             else:
-                print("⚠️  Only 1 window found - make sure you clicked LAUNCH!")
-                return False
+                # Course runs in the same window/tab (e.g. CtSys) - use it
+                self.driver.switch_to.window(all_windows[0])
+                print(f"ℹ️  Single window - using current tab: '{self.driver.title}'")
+
+            # Wait a moment for content to load
+            time.sleep(2)  # Increased wait time
+
+            # Mute the course audio
+            self.mute_tab()
+            return True
         except Exception as e:
             print(f"❌ Error switching to course window: {e}")
             return False
