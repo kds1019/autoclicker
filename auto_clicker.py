@@ -572,8 +572,9 @@ class TrainingAutoClicker:
                     pass
 
                 # Also try other common popup window button IDs
+                # ("next-btn" is the CtSys player's Next control)
                 if not next_button:
-                    for btn_id in ["nextButton", "btnContinue", "next-button", "continueButton"]:
+                    for btn_id in ["next-btn", "nextBtn", "nextButton", "btnContinue", "next-button", "continueButton"]:
                         try:
                             next_button = self.driver.find_element(By.ID, btn_id)
                             if next_button and next_button.is_displayed():
