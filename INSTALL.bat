@@ -1,6 +1,9 @@
 @echo off
 REM FlightSafety Auto-Clicker Installer for Windows
 
+REM Always run from the folder this script lives in
+cd /d "%~dp0"
+
 echo ==========================================
 echo FlightSafety Auto-Clicker Installer
 echo ==========================================
