@@ -1,16 +1,17 @@
 """
-FlightSafety Auto-Clicker with GUI
+Training Auto-Clicker with GUI
 """
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import threading
 import sys
 from auto_clicker import TrainingAutoClicker
+from config import SITE_NAME
 
 class AutoClickerGUI:
     def __init__(self):
         self.window = tk.Tk()
-        self.window.title("FlightSafety Auto-Clicker")
+        self.window.title(f"{SITE_NAME} Auto-Clicker")
         self.window.geometry("600x500")
         self.window.resizable(False, False)
         
@@ -29,7 +30,7 @@ class AutoClickerGUI:
         
         title_label = tk.Label(
             title_frame,
-            text="✈️ FlightSafety Auto-Clicker",
+            text=f"✈️ {SITE_NAME} Auto-Clicker",
             font=('Arial', 20, 'bold'),
             bg='#34495e',
             fg='white'
@@ -42,7 +43,7 @@ class AutoClickerGUI:
         
         instructions = [
             "1. Click 'LAUNCH BROWSER' below",
-            "2. Login to FlightSafety in the browser",
+            f"2. Login to {SITE_NAME} in the browser",
             "3. Click 'LAUNCH' or 'VIEW COURSE' to start your course",
             "4. Click 'START AUTO-CLICKING' below",
             "5. Sit back and relax! 😊"

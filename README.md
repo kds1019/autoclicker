@@ -1,7 +1,8 @@
-# FlightSafety Training Auto-Clicker 🚁
+# Training Auto-Clicker 🚁
 
-Automatically clicks through FlightSafety training slides and alerts you when questions appear.
+Automatically clicks through online training slides and alerts you when questions appear.
 
+**✅ Works with FlightSafety and CtSys online training**
 **✅ Works on Windows, Mac, and Linux!**
 
 ---
@@ -61,7 +62,7 @@ python3 auto_clicker_gui.py
 ### **Using the GUI:**
 
 1. 🚀 **Click "LAUNCH BROWSER"** - Chrome opens automatically
-2. 🔐 **Login to FlightSafety** in the browser
+2. 🔐 **Login to your training site** in the browser
 3. 📚 **Click "LAUNCH" or "VIEW COURSE"** to start your course
 4. ▶️ **Click "START AUTO-CLICKING"** in the GUI
 5. ☕ **Relax!** The app will:
@@ -81,6 +82,9 @@ python3 auto_clicker_gui.py
 
 Edit `config.py` to customize:
 
+- **Training system** - Set `TRAINING_SITE` to `"flightsafety"` or `"ctsys"` to
+  choose which site the browser opens. Add your own site under `TRAINING_SITES`
+  (name, url, content_frame) to support another training portal.
 - **Click delay range** - Change `MIN_CLICK_DELAY` and `MAX_CLICK_DELAY`
 - **Beep settings** - Change `BEEP_COUNT`, `BEEP_FREQUENCY`, `BEEP_DURATION`
 - **Button keywords** - Add more keywords if buttons aren't detected

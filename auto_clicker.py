@@ -1,6 +1,7 @@
 """
-FlightSafety Training Auto-Clicker
+Training Auto-Clicker
 Automatically clicks through training slides and alerts when questions appear
+Supports multiple training systems (FlightSafety, CtSys) via config.py
 Cross-platform: Works on Windows, Mac, and Linux
 """
 
@@ -25,7 +26,7 @@ class TrainingAutoClicker:
         self.gui_mode = gui_mode  # Skip input() prompts in GUI mode
         
     def setup_browser(self):
-        """Launch Chrome browser automatically and open FlightSafety"""
+        """Launch Chrome browser automatically and open the training site"""
         print("🔧 Launching Chrome browser...")
 
         options = webdriver.ChromeOptions()
@@ -40,13 +41,13 @@ class TrainingAutoClicker:
             self.driver = webdriver.Chrome(service=service, options=options)
             print("✅ Chrome launched!")
 
-            # Open FlightSafety website
-            print(f"🌐 Opening FlightSafety website: {FLIGHTSAFETY_URL}")
-            self.driver.get(FLIGHTSAFETY_URL)
+            # Open the training website
+            print(f"🌐 Opening {SITE_NAME} website: {TRAINING_URL}")
+            self.driver.get(TRAINING_URL)
 
             if not self.gui_mode:
                 print("\n📋 INSTRUCTIONS:")
-                print("1. Login to FlightSafety in the Chrome window")
+                print(f"1. Login to {SITE_NAME} in the Chrome window")
                 print("2. Click 'LAUNCH' or 'VIEW COURSE' to start your course")
                 print("3. Wait for the course to open in a NEW TAB")
                 print("4. Press ENTER here when the course tab is open...")
@@ -236,9 +237,9 @@ class TrainingAutoClicker:
 
             submit_button = None
 
-            # Try to find submit button in "sco" frame first
+            # Try to find submit button in the content frame first
             try:
-                self.driver.switch_to.frame("sco")
+                self.driver.switch_to.frame(CONTENT_FRAME)
                 submit_button = self.find_button(SUBMIT_BUTTON_KEYWORDS, debug=False)
                 self.driver.switch_to.default_content()
             except:
@@ -283,9 +284,9 @@ class TrainingAutoClicker:
             # Re-mute audio before checking (in case volume button was pressed)
             self.mute_tab()
 
-            # Try to find button in "sco" frame first (most courses)
+            # Try to find button in the content frame first (most courses)
             try:
-                self.driver.switch_to.frame("sco")
+                self.driver.switch_to.frame(CONTENT_FRAME)
                 next_button = self.find_button(NEXT_BUTTON_KEYWORDS, debug=True)
 
                 if next_button:
@@ -313,8 +314,8 @@ class TrainingAutoClicker:
                     self.driver.switch_to.default_content()
 
             except Exception as frame_error:
-                # No "sco" frame - try looking directly on the page (popup windows)
-                print("⚠️  No 'sco' frame found - this appears to be a popup window course")
+                # No content frame - try looking directly on the page (popup windows)
+                print(f"⚠️  No '{CONTENT_FRAME}' frame found - this appears to be a popup window course")
                 print(f"   Current URL: {self.driver.current_url}")
                 try:
                     self.driver.switch_to.default_content()
@@ -602,7 +603,7 @@ class TrainingAutoClicker:
                 return
 
         print("\n" + "="*60)
-        print("🚀 FlightSafety Auto-Clicker Started!")
+        print(f"🚀 {SITE_NAME} Auto-Clicker Started!")
         print("="*60)
         print(f"⏱️  Random delay: {MIN_CLICK_DELAY}-{MAX_CLICK_DELAY} seconds between clicks")
         print(f"🔊 Will beep when questions detected")

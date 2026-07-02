@@ -1,12 +1,15 @@
 ================================================================================
-        FlightSafety Auto-Clicker - Simple User Guide
+        Training Auto-Clicker - Simple User Guide
 ================================================================================
 
 What does this do?
 ------------------
-This app automatically clicks through your FlightSafety training slides so you
-don't have to sit there clicking "Next" every 30 seconds. When a question 
+This app automatically clicks through your online training slides so you
+don't have to sit there clicking "Next" every 30 seconds. When a question
 appears, it beeps loudly to alert you, then you answer and it keeps going!
+
+Works with FlightSafety and CtSys training. Pick which one by setting
+TRAINING_SITE in config.py (default is "ctsys").
 
 
 Quick Start (3 Steps!)
@@ -21,10 +24,10 @@ STEP 1: Run the app
     → Click "Run anyway"
     (This is normal - the app is safe!)
 
-STEP 2: Login to FlightSafety
+STEP 2: Login to your training site
     1. Click the "LAUNCH BROWSER" button
     2. Chrome will open automatically
-    3. Login with your FlightSafety username/password
+    3. Login with your training site username/password
     4. Click "LAUNCH" or "VIEW COURSE" to start your training
     5. Wait for the course to open in a new window/tab
 
@@ -95,7 +98,7 @@ Safety & Privacy
 ----------------
 ✅ This app runs 100% on YOUR computer
 ✅ No data is sent anywhere
-✅ No internet connection needed (except for FlightSafety itself)
+✅ No internet connection needed (except for the training site itself)
 ✅ Your login info stays private
 ✅ The app only clicks buttons - nothing else
 

@@ -1,13 +1,44 @@
 """
-Configuration settings for FlightSafety Auto-Clicker
+Configuration settings for the Training Auto-Clicker
+
+Supports multiple online training systems (FlightSafety, CtSys).
+Set TRAINING_SITE below to choose which one the browser opens.
 """
 
 # ============================================================================
 # WEBSITE SETTINGS
 # ============================================================================
 
-# FlightSafety training website URL (Okta login)
-FLIGHTSAFETY_URL = "https://fsi-customer.okta.com/oauth2/aus1kfqntg1hrJWLh4h7/v1/authorize?client_id=0oa2teif5oVCU9x5U4h7&response_type=code&scope=openid+https%3A%2F%2Fmfs2.flightsafety.com&state=https%3A%2F%2FMFS2.flightsafety.com&redirect_uri=https%3A%2F%2Fwww.flightsafety.com%2Fmfs_authorization_code_callback.php"
+# Which training system to use: "flightsafety" or "ctsys"
+TRAINING_SITE = "ctsys"
+
+# Per-site settings. Each site defines:
+#   name          - label shown in logs and the GUI
+#   url           - page the browser opens automatically
+#   content_frame - name of the SCORM/content frame to try first (the
+#                   auto-clicker also scans every other frame as a fallback,
+#                   so popup-window courses still work if this doesn't match)
+TRAINING_SITES = {
+    "flightsafety": {
+        "name": "FlightSafety",
+        "url": "https://fsi-customer.okta.com/oauth2/aus1kfqntg1hrJWLh4h7/v1/authorize?client_id=0oa2teif5oVCU9x5U4h7&response_type=code&scope=openid+https%3A%2F%2Fmfs2.flightsafety.com&state=https%3A%2F%2FMFS2.flightsafety.com&redirect_uri=https%3A%2F%2Fwww.flightsafety.com%2Fmfs_authorization_code_callback.php",
+        "content_frame": "sco",
+    },
+    "ctsys": {
+        "name": "CtSys",
+        "url": "https://training.ctsys.com/login",
+        "content_frame": "sco",
+    },
+}
+
+# Active site (derived from TRAINING_SITE above)
+_active_site = TRAINING_SITES[TRAINING_SITE]
+SITE_NAME = _active_site["name"]
+TRAINING_URL = _active_site["url"]
+CONTENT_FRAME = _active_site["content_frame"]
+
+# Backward-compatible alias (older code/imports referenced this name)
+FLIGHTSAFETY_URL = TRAINING_SITES["flightsafety"]["url"]
 
 # ============================================================================
 # CLICK DELAY SETTINGS
