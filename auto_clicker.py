@@ -92,10 +92,21 @@ class TrainingAutoClicker:
     def find_button(self, keywords, debug=False):
         """Find button by text content or attributes"""
         all_buttons = []
+
+        def _visible(el):
+            # Skip elements hidden in the DOM - many training pages keep a
+            # hidden Submit/Next in the markup that would cause false matches.
+            try:
+                return el.is_displayed()
+            except:
+                return False
+
         try:
             # Collect all clickable elements
             buttons = self.driver.find_elements(By.TAG_NAME, "button")
             for button in buttons:
+                if not _visible(button):
+                    continue
                 button_text = button.text.strip()
                 if button_text:
                     all_buttons.append(("button", button_text, button))
@@ -103,12 +114,16 @@ class TrainingAutoClicker:
             inputs = self.driver.find_elements(By.TAG_NAME, "input")
             for input_elem in inputs:
                 if input_elem.get_attribute("type") in ["button", "submit"]:
+                    if not _visible(input_elem):
+                        continue
                     input_value = input_elem.get_attribute("value") or ""
                     if input_value:
                         all_buttons.append(("input", input_value, input_elem))
 
             links = self.driver.find_elements(By.TAG_NAME, "a")
             for link in links:
+                if not _visible(link):
+                    continue
                 link_text = link.text.strip()
                 if link_text and len(link_text) < 50:  # Only show short link texts
                     all_buttons.append(("link", link_text, link))
@@ -118,6 +133,8 @@ class TrainingAutoClicker:
             for div in divs:
                 onclick = div.get_attribute("onclick")
                 if onclick:  # Has onclick handler
+                    if not _visible(div):
+                        continue
                     div_text = div.text.strip()
                     div_id = div.get_attribute("id") or ""
                     div_class = div.get_attribute("class") or ""
@@ -252,7 +269,11 @@ class TrainingAutoClicker:
                 submit_button = self.find_button(SUBMIT_BUTTON_KEYWORDS, debug=False)
 
             if submit_button:
-                print(f"  🔍 Found submit button - question detected!")
+                try:
+                    matched = submit_button.text.strip() or submit_button.get_attribute("value") or "(no text)"
+                except:
+                    matched = "(unknown)"
+                print(f"  🔍 Found submit button - question detected! (matched: '{matched}')")
 
             return submit_button is not None
         except Exception as e:
