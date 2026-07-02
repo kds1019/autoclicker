@@ -1,0 +1,106 @@
+================================================================================
+        FlightSafety Auto-Clicker - Simple User Guide
+================================================================================
+
+What does this do?
+------------------
+This app automatically clicks through your FlightSafety training slides so you
+don't have to sit there clicking "Next" every 30 seconds. When a question 
+appears, it beeps loudly to alert you, then you answer and it keeps going!
+
+
+Quick Start (3 Steps!)
+----------------------
+
+STEP 1: Run the app
+    Windows: Double-click "FlightSafety-AutoClicker.exe"
+    Mac:     Double-click "FlightSafety-AutoClicker.app"
+    
+    If Windows shows a warning:
+    → Click "More info"
+    → Click "Run anyway"
+    (This is normal - the app is safe!)
+
+STEP 2: Login to FlightSafety
+    1. Click the "LAUNCH BROWSER" button
+    2. Chrome will open automatically
+    3. Login with your FlightSafety username/password
+    4. Click "LAUNCH" or "VIEW COURSE" to start your training
+    5. Wait for the course to open in a new window/tab
+
+STEP 3: Start auto-clicking
+    1. Go back to the Auto-Clicker app
+    2. Click "START AUTO-CLICKING"
+    3. Sit back and relax!
+
+
+What Happens Next?
+------------------
+✅ The app will click "Next" every 1-20 seconds (random timing)
+✅ When a QUESTION appears, you'll hear LOUD BEEPS
+✅ The app pauses automatically - answer the question
+✅ Click "Submit" after answering
+✅ The app resumes clicking automatically
+
+
+Controls
+--------
+STOP button - Stops the auto-clicker
+Close browser manually when you're done (don't close during training!)
+
+
+Tips
+----
+• Stay nearby - you need to answer questions when they appear
+• Keep your volume up so you hear the beeps
+• Don't close the Chrome window while it's running
+• You can minimize the app and do other things while it runs
+
+
+Troubleshooting
+---------------
+
+Problem: "Python is not installed"
+Solution: You're using the wrong file!
+    → Use "FlightSafety-AutoClicker.exe" (Windows)
+    → Use "FlightSafety-AutoClicker.app" (Mac)
+    → NOT the .py files!
+
+Problem: Windows security warning
+Solution: Click "More info" → "Run anyway"
+    → The app is safe, just not digitally signed
+
+Problem: Can't hear beeps
+Solution: Turn up your volume!
+    → Windows: Check volume mixer in taskbar
+    → Mac: Check System Preferences → Sound
+
+Problem: Next button not found
+Solution: Wait a few seconds - videos might still be playing
+    → The app waits for videos to finish before clicking
+
+Problem: Browser closed accidentally
+Solution: Click "LAUNCH BROWSER" again and login
+
+
+Need Help?
+----------
+If something isn't working:
+1. Close the app completely
+2. Close ALL Chrome windows
+3. Start over from Step 1
+
+
+Safety & Privacy
+----------------
+✅ This app runs 100% on YOUR computer
+✅ No data is sent anywhere
+✅ No internet connection needed (except for FlightSafety itself)
+✅ Your login info stays private
+✅ The app only clicks buttons - nothing else
+
+
+================================================================================
+                    Enjoy your automated training! ✈️
+================================================================================
+

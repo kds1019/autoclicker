@@ -1,0 +1,8 @@
+# FlightSafety Auto-Clicker Dependencies
+# Works on Windows, Mac, and Linux
+
+# Selenium for browser automation
+selenium>=4.0.0
+
+# Automatic ChromeDriver management
+webdriver-manager>=4.0.0

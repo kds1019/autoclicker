@@ -1,0 +1,85 @@
+================================================================================
+EMAIL TEMPLATE - Copy and paste this into your email
+================================================================================
+
+Subject: FlightSafety Training Auto-Clicker 🚁
+
+---
+
+Hey [Friend's Name],
+
+Here's that auto-clicker for FlightSafety training I told you about!
+
+It automatically clicks through the slides and beeps when questions appear so 
+you don't have to babysit the training. Saves hours of mindless clicking!
+
+
+📎 ATTACHMENT: FlightSafety-AutoClicker.zip
+
+
+HOW TO USE (Super Simple!):
+
+1. Download and extract the ZIP file
+2. Double-click "FlightSafety-AutoClicker.exe" (Windows) or 
+   "FlightSafety-AutoClicker.app" (Mac)
+3. Click "LAUNCH BROWSER"
+4. Login to FlightSafety
+5. Click "START AUTO-CLICKING"
+6. Done! It will beep when questions appear.
+
+
+⚠️ WINDOWS USERS: You might see a security warning
+   → Click "More info" → "Run anyway"
+   → This is normal - the app is safe, just not digitally signed
+
+
+📖 Full instructions are in "USER_GUIDE.txt" inside the ZIP file.
+
+
+TIPS:
+• Keep your volume up so you hear the beeps when questions appear
+• Stay nearby - you still need to answer the questions
+• Don't close Chrome while it's running
+
+
+Let me know if you have any issues!
+
+[Your Name]
+
+---
+
+P.S. This works on Windows and Mac. If you have a Chromebook, let me know 
+and I'll send you different instructions.
+
+================================================================================
+
+ALTERNATIVE VERSION (For Google Drive / Dropbox sharing):
+
+Subject: FlightSafety Auto-Clicker - Download Link
+
+---
+
+Hey [Friend's Name],
+
+I made an auto-clicker for FlightSafety training that saves you from clicking 
+"Next" a million times. It beeps when questions appear so you can answer them.
+
+📥 DOWNLOAD HERE: [Your Google Drive / Dropbox link]
+
+QUICK START:
+1. Download and extract the ZIP
+2. Double-click the app
+3. Click "LAUNCH BROWSER"
+4. Login and start your course
+5. Click "START AUTO-CLICKING"
+
+Full instructions are in the USER_GUIDE.txt file.
+
+Windows users: If you see a security warning, click "More info" → "Run anyway"
+
+Enjoy! ✈️
+
+[Your Name]
+
+================================================================================
+
