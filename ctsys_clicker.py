@@ -306,11 +306,26 @@ class CtSysClicker(TrainingAutoClicker):
         self.running = True
         self.mute_tab()  # loud mute once so the user sees confirmation
         not_found_streak = 0  # throttle the diagnostic so it prints once, not every loop
+        paused_hint_shown = False
+        last_paused_diag = 0.0
         try:
             while self.running:
                 if self.paused:
+                    # While paused, keep refreshing the diagnostic file with the
+                    # CURRENT slide's state so it can be captured on demand (e.g.
+                    # to inspect an interaction slide) without the DevTools console.
+                    if not paused_hint_shown:
+                        print("  ⏸️  Paused - writing current slide state to "
+                              "ctsys_diagnostic.txt (refreshes every ~2s)")
+                        paused_hint_shown = True
+                    now = time.time()
+                    if now - last_paused_diag >= 2.0:
+                        self._to_main()
+                        self._diagnose(verbose=False)
+                        last_paused_diag = now
                     time.sleep(0.5)
                     continue
+                paused_hint_shown = False
 
                 self._to_main()
                 self._mute_quiet()
