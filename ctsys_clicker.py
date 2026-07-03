@@ -16,6 +16,8 @@ replaces the tangled multi-path loop with one deterministic loop:
 import time
 import random
 
+from selenium.webdriver.common.by import By
+
 from auto_clicker import TrainingAutoClicker
 from config import (
     SITE_NAME,
@@ -29,25 +31,6 @@ from config import (
 class CtSysClicker(TrainingAutoClicker):
     """Deterministic single-path clicker for training.ctsys.com."""
 
-    _NEXT_STATE_JS = """
-        var el = document.getElementById('next-btn');
-        if (!el) return null;
-        var cs = window.getComputedStyle(el);
-        return {cls: (el.className || '').toString().toLowerCase(),
-                display: cs.display,
-                visible: (el.offsetWidth > 0 && el.offsetHeight > 0)};
-    """
-
-    _SUBMIT_STATE_JS = """
-        var el = document.getElementById('submit-btn');
-        if (!el) return null;
-        var cs = window.getComputedStyle(el);
-        return {text: (el.textContent || '').trim(),
-                opacity: cs.opacity,
-                display: cs.display,
-                visible: (el.offsetWidth > 0 && el.offsetHeight > 0)};
-    """
-
     _MEDIA_JS = """
         var playing = false;
         document.querySelectorAll('video,audio').forEach(function(m){
@@ -59,35 +42,63 @@ class CtSysClicker(TrainingAutoClicker):
         return playing;
     """
 
-    def _js(self, script):
-        try:
-            return self.driver.execute_script(script)
-        except Exception:
-            return None
+    _MUTE_JS = """
+        document.querySelectorAll('video').forEach(function(v){ v.muted = true; });
+        document.querySelectorAll('audio').forEach(function(a){ a.muted = true; });
+    """
 
-    def _media_playing(self):
-        return bool(self._js(self._MEDIA_JS))
-
-    def _question_present(self):
-        st = self._js(self._SUBMIT_STATE_JS)
-        if not st or not st.get("visible") or st.get("display") == "none":
-            return False
-        text = (st.get("text") or "").lower()
-        if any(x.lower() in text for x in SUBMIT_EXCLUDE_KEYWORDS):
-            return False
+    def _to_main(self):
         try:
-            if float(st.get("opacity") or "1") < 0.1:
-                return False
+            self.driver.switch_to.default_content()
         except Exception:
             pass
+
+    def _mute_quiet(self):
+        """Mute media without printing (avoids per-loop log spam)."""
+        try:
+            self.driver.execute_script(self._MUTE_JS)
+        except Exception:
+            pass
+
+    def _media_playing(self):
+        try:
+            return bool(self.driver.execute_script(self._MEDIA_JS))
+        except Exception:
+            return False
+
+    def _find(self, element_id):
+        """Return a visible element by id, or None. Uses Selenium's
+        is_displayed() (robust) rather than a raw offsetWidth check."""
+        try:
+            el = self.driver.find_element(By.ID, element_id)
+        except Exception:
+            return None
+        try:
+            if not el.is_displayed():
+                return None
+        except Exception:
+            pass
+        return el
+
+    def _question_present(self):
+        el = self._find("submit-btn")
+        if el is None:
+            return False
+        try:
+            text = (el.text or "").lower()
+        except Exception:
+            text = ""
+        if any(x.lower() in text for x in SUBMIT_EXCLUDE_KEYWORDS):
+            return False
         return True
 
     def _next_ready(self):
         """True = highlighted/ready, False = present but not ready, None = not shown."""
-        st = self._js(self._NEXT_STATE_JS)
-        if not st or not st.get("visible") or st.get("display") == "none":
+        el = self._find("next-btn")
+        if el is None:
             return None
-        cls = st.get("cls") or ""
+        cls = (el.get_attribute("class") or "").lower()
+        print(f"  ℹ️  Next state: cls='{cls}'")
         if "submit-btn-off" in cls:
             return False
         if "submit-btn-on" in cls:
@@ -95,8 +106,11 @@ class CtSysClicker(TrainingAutoClicker):
         return False  # unknown -> treat as not ready (safer for credit)
 
     def _click_next(self):
+        el = self._find("next-btn")
+        if el is None:
+            return False
         try:
-            self.driver.execute_script("document.getElementById('next-btn').click();")
+            self.driver.execute_script("arguments[0].click();", el)
             return True
         except Exception as e:
             print(f"⚠️  Could not click Next: {e}")
@@ -116,13 +130,15 @@ class CtSysClicker(TrainingAutoClicker):
         print("=" * 60 + "\n")
 
         self.running = True
+        self.mute_tab()  # loud mute once so the user sees confirmation
         try:
             while self.running:
                 if self.paused:
                     time.sleep(0.5)
                     continue
 
-                self.mute_tab()
+                self._to_main()
+                self._mute_quiet()
 
                 # 1) Question / finish control needs input -> beep and wait
                 if self._question_present():
@@ -170,7 +186,7 @@ class CtSysClicker(TrainingAutoClicker):
                 if self._click_next():
                     print("  ➡️  Clicked Next")
                     time.sleep(0.5)
-                    self.mute_tab()
+                    self._mute_quiet()
         except KeyboardInterrupt:
             print("\n\n🛑 Stopped by user (CTRL+C)")
         finally:
