@@ -105,21 +105,26 @@ class CtSysClicker(TrainingAutoClicker):
         return false;
     """
 
-    # Diagnostic: describe every frame and where the controls live.
+    # Diagnostic: for each control id, report where it lives and its full state
+    # (class/text/opacity/display) across the top document and every frame.
     _DIAG_JS = _DOCS_FN + """
-        var out={topHasNext: !!document.getElementById('next-btn'),
-                 topHasSubmit: !!document.getElementById('submit-btn'),
-                 frames: []};
-        var fr=document.querySelectorAll('iframe,frame');
-        for(var i=0;i<fr.length;i++){
-            var f={src:(fr[i].src||''), accessible:false, hasNext:false, hasSubmit:false};
-            try{ var d=fr[i].contentDocument;
-                 if(d){ f.accessible=true;
-                        f.hasNext=!!d.getElementById('next-btn');
-                        f.hasSubmit=!!d.getElementById('submit-btn'); } }catch(e){}
-            out.frames.push(f);
+        var ds=_docs();
+        function detail(id){
+            for(var i=0;i<ds.length;i++){
+                var el=ds[i].getElementById(id);
+                if(el){
+                    var cs=(el.ownerDocument.defaultView||window).getComputedStyle(el);
+                    return {found:true, where:(i===0?'top':'doc'+i),
+                            cls:(el.className||'').toString(),
+                            text:(el.textContent||'').trim().slice(0,60),
+                            opacity:cs.opacity, display:cs.display,
+                            offParentNull:(el.offsetParent===null)};
+                }
+            }
+            return {found:false};
         }
-        return out;
+        return {url:document.location.href, docs:ds.length,
+                next:detail('next-btn'), submit:detail('submit-btn')};
     """
 
     def _to_main(self):
@@ -179,20 +184,19 @@ class CtSysClicker(TrainingAutoClicker):
             print(f"  ⚠️  Diagnostic failed: {e}")
             return
 
+        def _fmt(name, c):
+            if not c or not c.get("found"):
+                return f"    {name}: NOT FOUND"
+            return (f"    {name}: where={c.get('where')} cls='{c.get('cls')}' "
+                    f"text='{c.get('text')}' opacity={c.get('opacity')} "
+                    f"display={c.get('display')} offParentNull={c.get('offParentNull')}")
+
         lines = [
-            f"🩺 DIAG topHasNext={d.get('topHasNext')} "
-            f"topHasSubmit={d.get('topHasSubmit')} frames={len(d.get('frames') or [])}"
+            f"url={d.get('url')}",
+            f"🩺 DIAG docs={d.get('docs')}",
+            _fmt("next-btn", d.get("next")),
+            _fmt("submit-btn", d.get("submit")),
         ]
-        for i, f in enumerate(d.get("frames") or []):
-            lines.append(
-                f"    frame{i}: accessible={f.get('accessible')} "
-                f"hasNext={f.get('hasNext')} hasSubmit={f.get('hasSubmit')} "
-                f"src={f.get('src')}"
-            )
-        try:
-            lines.insert(0, f"url={self.driver.current_url}")
-        except Exception:
-            pass
 
         for ln in lines:
             print("  " + ln)
