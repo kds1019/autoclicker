@@ -293,6 +293,55 @@ class TrainingAutoClicker:
                 pass
             return False
     
+    def is_next_ready(self, element):
+        """Return True if the Next button is enabled/highlighted (slide complete).
+
+        CtSys keeps Next dimmed/disabled until the slide finishes, then
+        highlights it. We treat it as NOT ready if it shows any common
+        "disabled" signal (aria-disabled, disabled attr/class, low opacity,
+        pointer-events:none, not-allowed cursor). The state is logged so the
+        exact signal can be tuned if needed.
+        """
+        try:
+            info = self.driver.execute_script(
+                """
+                var el = arguments[0];
+                var cs = window.getComputedStyle(el);
+                return {
+                    cls: (el.className || '').toString(),
+                    ariaDisabled: el.getAttribute('aria-disabled'),
+                    disabledAttr: el.getAttribute('disabled'),
+                    opacity: cs.opacity,
+                    pointerEvents: cs.pointerEvents,
+                    cursor: cs.cursor
+                };
+                """,
+                element,
+            )
+        except Exception as e:
+            print(f"  ⚠️ Could not read Next button state: {e}")
+            return True  # If we can't tell, don't block progress
+
+        print(f"  ℹ️  Next button state: {info}")
+
+        cls = (info.get("cls") or "").lower()
+        if info.get("ariaDisabled") == "true":
+            return False
+        if info.get("disabledAttr") is not None:
+            return False
+        if "disable" in cls or "inactive" in cls or "not-active" in cls:
+            return False
+        try:
+            if float(info.get("opacity") or "1") < 0.5:
+                return False
+        except Exception:
+            pass
+        if (info.get("pointerEvents") or "") == "none":
+            return False
+        if (info.get("cursor") or "") == "not-allowed":
+            return False
+        return True
+
     def click_next(self):
         """Find and click the Next button"""
         next_button = None
@@ -590,10 +639,9 @@ class TrainingAutoClicker:
                     next_button = self.find_button(NEXT_BUTTON_KEYWORDS, debug=True)
 
                 if next_button:
-                    # Check if button is enabled (not disabled)
-                    is_disabled = next_button.get_attribute("aria-disabled") == "true"
-                    if is_disabled:
-                        print("⚠️  Next button is disabled (video/audio still playing)")
+                    # Only click once the slide is complete (button enabled/highlighted)
+                    if not self.is_next_ready(next_button):
+                        print("⚠️  Next button not ready yet (slide still in progress) - waiting")
                         return False
 
                     try:
