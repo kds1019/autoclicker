@@ -188,6 +188,31 @@ class CtSysClicker(TrainingAutoClicker):
         return false;
     """
 
+    # On-screen "you must act" notice. Some CtSys video slides pop a small
+    # badge/label such as "Interaction" or "Interactive Map" when the slide
+    # pauses and needs you to do something. We scan every frame for a VISIBLE,
+    # short-text element whose text contains "interact" (covers interaction /
+    # interactive / interactive map) and surface it so the loop can beep + wait
+    # instead of sitting silently. Returns the matched text, or null.
+    _NOTICE_JS = _DOCS_FN + """
+        var ds=_docs();
+        for(var i=0;i<ds.length;i++){
+            var all;
+            try{ all=ds[i].querySelectorAll('*'); }catch(e){ all=[]; }
+            for(var j=0;j<all.length;j++){
+                var e=all[j];
+                var t=(e.textContent||'').replace(/\\s+/g,' ').trim();
+                if(t.length===0 || t.length>40) continue;
+                if(t.toLowerCase().indexOf('interact')<0) continue;
+                var cs=(e.ownerDocument.defaultView||window).getComputedStyle(e);
+                var vis=cs.display!=='none' && cs.visibility!=='hidden'
+                        && parseFloat(cs.opacity||'1')>0.1 && e.offsetParent!==null;
+                if(vis) return t;
+            }
+        }
+        return null;
+    """
+
     _CLICK_JS = _FIND_NEXT_FN + """
         var el=_findNext();
         if(el){ el.click(); return true; }
@@ -308,6 +333,16 @@ class CtSysClicker(TrainingAutoClicker):
         except Exception:
             return False
 
+    def _interaction_notice(self):
+        """Return the text of an on-screen 'interaction' / 'interactive map'
+        notice if one is visible (else None), so the loop can beep and wait for
+        the user to act on video slides that require an interaction."""
+        try:
+            txt = self.driver.execute_script(self._NOTICE_JS)
+        except Exception:
+            return None
+        return txt or None
+
     def _diagnose(self, verbose=True):
         """Capture where #next-btn / #submit-btn live and their state; write to
         ctsys_diagnostic.txt (always, so it holds the latest state) and print to
@@ -415,6 +450,23 @@ class CtSysClicker(TrainingAutoClicker):
                     while self.running and self._question_present():
                         time.sleep(1)
                     print("✅ Input handled - resuming...")
+                    continue
+
+                # 1b) On-screen "Interaction" / "Interactive Map" notice on a
+                #     video slide -> you must act. Beep once and wait until the
+                #     notice clears, then resume.
+                notice = self._interaction_notice()
+                if notice:
+                    print("\n" + "!" * 60)
+                    print(f'🖐️  INTERACTION NEEDED! Slide is showing: "{notice}"')
+                    print("    Do the interaction; I'll continue once it clears.")
+                    print("!" * 60)
+                    self.play_alert()
+                    while self.running and self._interaction_notice():
+                        time.sleep(1)
+                    if not self.running:
+                        break
+                    print("✅ Interaction handled - resuming...")
                     continue
 
                 # 2) Media still playing -> let the slide finish (for credit).
