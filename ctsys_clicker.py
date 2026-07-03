@@ -29,20 +29,96 @@ from config import (
 class CtSysClicker(TrainingAutoClicker):
     """Deterministic single-path clicker for training.ctsys.com."""
 
-    _MEDIA_JS = """
-        var playing = false;
-        document.querySelectorAll('video,audio').forEach(function(m){
-            try {
-                if (!m.paused && !m.ended && m.duration > 0 &&
-                    (m.duration - m.currentTime) > 1) playing = true;
-            } catch (e) {}
-        });
+    # ---- Deep (cross-frame) DOM helpers -------------------------------------
+    # CtSys is an Angular app; the player controls (#next-btn / #submit-btn) and
+    # the media may live in the top document OR inside a same-origin iframe.
+    # These scripts collect the top document plus every ACCESSIBLE frame document
+    # and search all of them, so it doesn't matter which frame Selenium focuses.
+
+    _DOCS_FN = """
+        function _docs(){
+            var out=[];
+            (function walk(d){
+                out.push(d);
+                var fr=d.querySelectorAll('iframe,frame');
+                for(var i=0;i<fr.length;i++){
+                    try{ var cd=fr[i].contentDocument; if(cd) walk(cd); }catch(e){}
+                }
+            })(document);
+            return out;
+        }
+    """
+
+    _NEXT_JS = _DOCS_FN + """
+        var ds=_docs();
+        for(var i=0;i<ds.length;i++){
+            var el=ds[i].getElementById('next-btn');
+            if(el){
+                var cs=(el.ownerDocument.defaultView||window).getComputedStyle(el);
+                return {cls:(el.className||'').toString().toLowerCase(),
+                        display:cs.display, visibility:cs.visibility};
+            }
+        }
+        return null;
+    """
+
+    _SUBMIT_JS = _DOCS_FN + """
+        var ds=_docs();
+        for(var i=0;i<ds.length;i++){
+            var el=ds[i].getElementById('submit-btn');
+            if(el){
+                var cs=(el.ownerDocument.defaultView||window).getComputedStyle(el);
+                var shown=cs.display!=='none' && cs.visibility!=='hidden'
+                          && parseFloat(cs.opacity||'1')>0.1 && el.offsetParent!==null;
+                return {text:(el.textContent||'').trim(), shown:shown};
+            }
+        }
+        return null;
+    """
+
+    _MEDIA_JS = _DOCS_FN + """
+        var ds=_docs(), playing=false;
+        for(var i=0;i<ds.length;i++){
+            ds[i].querySelectorAll('video,audio').forEach(function(m){
+                try{ if(!m.paused && !m.ended && m.duration>0 &&
+                        (m.duration-m.currentTime)>1) playing=true; }catch(e){}
+            });
+        }
         return playing;
     """
 
-    _MUTE_JS = """
-        document.querySelectorAll('video').forEach(function(v){ v.muted = true; });
-        document.querySelectorAll('audio').forEach(function(a){ a.muted = true; });
+    _MUTE_JS = _DOCS_FN + """
+        var ds=_docs();
+        for(var i=0;i<ds.length;i++){
+            ds[i].querySelectorAll('video').forEach(function(v){ v.muted=true; });
+            ds[i].querySelectorAll('audio').forEach(function(a){ a.muted=true; });
+        }
+    """
+
+    _CLICK_JS = _DOCS_FN + """
+        var ds=_docs();
+        for(var i=0;i<ds.length;i++){
+            var el=ds[i].getElementById('next-btn');
+            if(el){ el.click(); return true; }
+        }
+        return false;
+    """
+
+    # Diagnostic: describe every frame and where the controls live.
+    _DIAG_JS = _DOCS_FN + """
+        var out={topHasNext: !!document.getElementById('next-btn'),
+                 topHasSubmit: !!document.getElementById('submit-btn'),
+                 frames: []};
+        var fr=document.querySelectorAll('iframe,frame');
+        for(var i=0;i<fr.length;i++){
+            var f={src:(fr[i].src||''), accessible:false, hasNext:false, hasSubmit:false};
+            try{ var d=fr[i].contentDocument;
+                 if(d){ f.accessible=true;
+                        f.hasNext=!!d.getElementById('next-btn');
+                        f.hasSubmit=!!d.getElementById('submit-btn'); } }catch(e){}
+            out.frames.push(f);
+        }
+        return out;
     """
 
     def _to_main(self):
@@ -52,7 +128,7 @@ class CtSysClicker(TrainingAutoClicker):
             pass
 
     def _mute_quiet(self):
-        """Mute media without printing (avoids per-loop log spam)."""
+        """Mute media across all frames without printing (avoids log spam)."""
         try:
             self.driver.execute_script(self._MUTE_JS)
         except Exception:
@@ -63,29 +139,6 @@ class CtSysClicker(TrainingAutoClicker):
             return bool(self.driver.execute_script(self._MEDIA_JS))
         except Exception:
             return False
-
-    # Read the Next control by ID (getElementById is reliable on CtSys even when
-    # the element reports a zero box, which breaks Selenium's is_displayed()).
-    _NEXT_JS = """
-        var el = document.getElementById('next-btn');
-        if (!el) return null;
-        var cs = window.getComputedStyle(el);
-        return {cls: (el.className || '').toString().toLowerCase(),
-                display: cs.display,
-                visibility: cs.visibility};
-    """
-
-    # Read the quiz/finish control by ID. "shown" ignores element size (the
-    # control can be a zero-box flex container) and keys on display/visibility.
-    _SUBMIT_JS = """
-        var el = document.getElementById('submit-btn');
-        if (!el) return null;
-        var cs = window.getComputedStyle(el);
-        var shown = cs.display !== 'none' && cs.visibility !== 'hidden'
-                    && parseFloat(cs.opacity || '1') > 0.1
-                    && el.offsetParent !== null;
-        return {text: (el.textContent || '').trim(), shown: shown};
-    """
 
     def _question_present(self):
         try:
@@ -115,13 +168,23 @@ class CtSysClicker(TrainingAutoClicker):
             return True
         return False  # unknown -> treat as not ready (safer for credit)
 
+    def _diagnose(self):
+        """Print where #next-btn / #submit-btn actually live (top vs frames)."""
+        try:
+            d = self.driver.execute_script(self._DIAG_JS)
+        except Exception as e:
+            print(f"  ⚠️  Diagnostic failed: {e}")
+            return
+        print(f"  🩺 DIAG topHasNext={d.get('topHasNext')} "
+              f"topHasSubmit={d.get('topHasSubmit')} frames={len(d.get('frames') or [])}")
+        for i, f in enumerate(d.get("frames") or []):
+            print(f"      frame{i}: accessible={f.get('accessible')} "
+                  f"hasNext={f.get('hasNext')} hasSubmit={f.get('hasSubmit')} "
+                  f"src={f.get('src')}")
+
     def _click_next(self):
         try:
-            ok = self.driver.execute_script(
-                "var el=document.getElementById('next-btn');"
-                "if(el){el.click();return true;}return false;"
-            )
-            return bool(ok)
+            return bool(self.driver.execute_script(self._CLICK_JS))
         except Exception as e:
             print(f"⚠️  Could not click Next: {e}")
             return False
@@ -141,6 +204,7 @@ class CtSysClicker(TrainingAutoClicker):
 
         self.running = True
         self.mute_tab()  # loud mute once so the user sees confirmation
+        not_found_streak = 0  # throttle the diagnostic so it prints once, not every loop
         try:
             while self.running:
                 if self.paused:
@@ -170,9 +234,13 @@ class CtSysClicker(TrainingAutoClicker):
                 # 3) Is Next highlighted (slide complete)?
                 ready = self._next_ready()
                 if ready is None:
-                    print("  🔎 Next button not on screen yet - waiting...")
+                    print("  🔎 Next button not found in any frame yet - waiting...")
+                    if not_found_streak == 0:
+                        self._diagnose()  # one-time layout dump so we can locate it
+                    not_found_streak += 1
                     time.sleep(POLL_INTERVAL)
                     continue
+                not_found_streak = 0
                 if not ready:
                     print("  ⏳ Next not highlighted yet (slide in progress) - waiting...")
                     time.sleep(POLL_INTERVAL)
