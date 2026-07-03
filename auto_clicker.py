@@ -278,6 +278,50 @@ class TrainingAutoClicker:
                     pass
                 submit_button = self.find_button(SUBMIT_BUTTON_KEYWORDS, debug=False, exclude=SUBMIT_EXCLUDE_KEYWORDS)
 
+            # CtSys renders its quiz/completion Submit as <div id="submit-btn">
+            # with an Angular (click) binding, so it has no inline onclick
+            # attribute and the generic find_button div-scan misses it. It is
+            # only present in the DOM on a slide that actually needs input, so
+            # look it up by id directly.
+            if not submit_button:
+                try:
+                    self.driver.switch_to.default_content()
+                except:
+                    pass
+                for sid in ["submit-btn", "submitBtn", "submit-button"]:
+                    try:
+                        candidate = self.driver.find_element(By.ID, sid)
+                    except:
+                        continue
+                    if not candidate.is_displayed():
+                        continue
+                    try:
+                        ctext = (candidate.text or "").strip().lower()
+                    except:
+                        ctext = ""
+                    # Skip excluded widgets (e.g. "Submit Feedback" chat)
+                    if any(x.lower() in ctext for x in SUBMIT_EXCLUDE_KEYWORDS):
+                        continue
+                    try:
+                        st = self.driver.execute_script(
+                            "var el=arguments[0];var cs=window.getComputedStyle(el);"
+                            "return {cls:(el.className||'').toString(),"
+                            "opacity:cs.opacity,display:cs.display};",
+                            candidate,
+                        )
+                    except:
+                        st = {}
+                    if (st.get("display") or "") == "none":
+                        continue
+                    try:
+                        if float(st.get("opacity") or "1") < 0.1:
+                            continue
+                    except:
+                        pass
+                    print(f"  ℹ️  Submit control state (#{sid}): {st}")
+                    submit_button = candidate
+                    break
+
             if submit_button:
                 try:
                     matched = submit_button.text.strip() or submit_button.get_attribute("value") or "(no text)"
