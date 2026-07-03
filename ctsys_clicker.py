@@ -123,8 +123,34 @@ class CtSysClicker(TrainingAutoClicker):
             }
             return {found:false};
         }
+        // Discover candidate advance controls: buttons, mat-icons, and any
+        // element whose id/class hints at navigation. Report visible ones first.
+        var KW=['next','submit','continue','forward','arrow','complete',
+                'prev','replay','nav'];
+        var cands=[];
+        for(var i=0;i<ds.length;i++){
+            var els;
+            try{ els=ds[i].querySelectorAll('button, mat-icon, i.material-icons, [id], [class]'); }
+            catch(e){ continue; }
+            for(var j=0;j<els.length && cands.length<80;j++){
+                var e=els[j], tag=e.tagName;
+                var idc=((e.id||'')+' '+(e.className||'')).toString().toLowerCase();
+                var isCand=(tag==='BUTTON'||tag==='MAT-ICON');
+                if(!isCand){ for(var k=0;k<KW.length;k++){ if(idc.indexOf(KW[k])>=0){isCand=true;break;} } }
+                if(!isCand) continue;
+                var cs;
+                try{ cs=(e.ownerDocument.defaultView||window).getComputedStyle(e); }catch(e2){ continue; }
+                var vis=cs.display!=='none' && cs.visibility!=='hidden' && e.offsetParent!==null;
+                cands.push({doc:i, tag:tag, id:(e.id||''),
+                            cls:(e.className||'').toString().slice(0,90),
+                            text:(e.textContent||'').trim().slice(0,30),
+                            vis:vis, opacity:cs.opacity});
+            }
+        }
+        cands.sort(function(a,b){ return (b.vis?1:0)-(a.vis?1:0); });
         return {url:document.location.href, docs:ds.length,
-                next:detail('next-btn'), submit:detail('submit-btn')};
+                next:detail('next-btn'), submit:detail('submit-btn'),
+                candidates:cands};
     """
 
     def _to_main(self):
@@ -197,7 +223,14 @@ class CtSysClicker(TrainingAutoClicker):
             f"🩺 DIAG docs={d.get('docs')}",
             _fmt("next-btn", d.get("next")),
             _fmt("submit-btn", d.get("submit")),
+            "  candidates (visible first):",
         ]
+        for c in (d.get("candidates") or []):
+            lines.append(
+                f"      [{'V' if c.get('vis') else '.'}] doc{c.get('doc')} "
+                f"<{c.get('tag')}> id='{c.get('id')}' cls='{c.get('cls')}' "
+                f"text='{c.get('text')}' opacity={c.get('opacity')}"
+            )
 
         if verbose:
             for ln in lines:
