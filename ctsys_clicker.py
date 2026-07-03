@@ -13,6 +13,7 @@ replaces the tangled multi-path loop with one deterministic loop:
   4. After it highlights, wait a RANDOM human-like time, then click.
 """
 
+import os
 import time
 import random
 
@@ -169,18 +170,40 @@ class CtSysClicker(TrainingAutoClicker):
         return False  # unknown -> treat as not ready (safer for credit)
 
     def _diagnose(self):
-        """Print where #next-btn / #submit-btn actually live (top vs frames)."""
+        """Print where #next-btn / #submit-btn actually live (top vs frames) and
+        also write it to ctsys_diagnostic.txt so it can be shared without needing
+        to scroll/copy the console."""
         try:
             d = self.driver.execute_script(self._DIAG_JS)
         except Exception as e:
             print(f"  ⚠️  Diagnostic failed: {e}")
             return
-        print(f"  🩺 DIAG topHasNext={d.get('topHasNext')} "
-              f"topHasSubmit={d.get('topHasSubmit')} frames={len(d.get('frames') or [])}")
+
+        lines = [
+            f"🩺 DIAG topHasNext={d.get('topHasNext')} "
+            f"topHasSubmit={d.get('topHasSubmit')} frames={len(d.get('frames') or [])}"
+        ]
         for i, f in enumerate(d.get("frames") or []):
-            print(f"      frame{i}: accessible={f.get('accessible')} "
-                  f"hasNext={f.get('hasNext')} hasSubmit={f.get('hasSubmit')} "
-                  f"src={f.get('src')}")
+            lines.append(
+                f"    frame{i}: accessible={f.get('accessible')} "
+                f"hasNext={f.get('hasNext')} hasSubmit={f.get('hasSubmit')} "
+                f"src={f.get('src')}"
+            )
+        try:
+            lines.insert(0, f"url={self.driver.current_url}")
+        except Exception:
+            pass
+
+        for ln in lines:
+            print("  " + ln)
+
+        try:
+            path = os.path.join(os.getcwd(), "ctsys_diagnostic.txt")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("\n".join(lines) + "\n")
+            print(f"  📝 Saved diagnostic to: {path}")
+        except Exception as e:
+            print(f"  ⚠️  Could not write diagnostic file: {e}")
 
     def _click_next(self):
         try:
