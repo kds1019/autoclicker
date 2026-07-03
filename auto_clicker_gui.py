@@ -102,7 +102,21 @@ class AutoClickerGUI:
             cursor='hand2'
         )
         self.start_btn.pack(pady=10)
-        
+
+        self.pause_btn = tk.Button(
+            button_frame,
+            text="⏸️ PAUSE",
+            font=('Arial', 14, 'bold'),
+            bg='#f39c12',
+            fg='white',
+            width=20,
+            height=2,
+            command=self.toggle_pause,
+            state='disabled',
+            cursor='hand2'
+        )
+        self.pause_btn.pack(pady=10)
+
         self.stop_btn = tk.Button(
             button_frame,
             text="⏹️ STOP",
@@ -174,21 +188,39 @@ class AutoClickerGUI:
         self.log("🚀 Starting auto-clicker...")
         self.start_btn.config(state='disabled')
         self.stop_btn.config(state='normal')
+        self.pause_btn.config(state='normal', text="⏸️ PAUSE")
         self.running = True
 
         def run_thread():
             self.clicker.running = True
+            self.clicker.paused = False
             self.clicker.run(skip_setup=True)
 
         threading.Thread(target=run_thread, daemon=True).start()
-        
+
+    def toggle_pause(self):
+        """Pause/resume auto-clicking (while paused it stops clicking and keeps
+        refreshing ctsys_diagnostic.txt with the current slide's state)."""
+        if not self.clicker:
+            return
+        self.clicker.paused = not self.clicker.paused
+        if self.clicker.paused:
+            self.pause_btn.config(text="▶️ RESUME")
+            self.log("⏸️ Paused - it will stop clicking. Current slide state is "
+                     "written to ctsys_diagnostic.txt every ~2s.")
+        else:
+            self.pause_btn.config(text="⏸️ PAUSE")
+            self.log("▶️ Resumed")
+
     def stop_clicking(self):
         """Stop auto-clicking"""
         self.log("\n⏹️ Stopping auto-clicker...")
         self.running = False
         if self.clicker:
             self.clicker.running = False
+            self.clicker.paused = False
         self.stop_btn.config(state='disabled')
+        self.pause_btn.config(state='disabled', text="⏸️ PAUSE")
         self.start_btn.config(state='normal')
         self.log("✅ Stopped")
         
