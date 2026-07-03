@@ -160,6 +160,34 @@ class CtSysClicker(TrainingAutoClicker):
         return false;
     """
 
+    # "This slide still needs you to interact" signal. CtSys renders a
+    # moreArrow* indicator (id/class like moreArrow1 / moreArrowContainer1)
+    # inside the interaction content frame while there is still something to
+    # click/explore. It disappears once the interaction is complete. We use it
+    # so a slide that plays narration first and requires interaction after is
+    # NOT skipped the moment the audio finishes.
+    _INTERACTION_JS = _DOCS_FN + """
+        var ds=_docs();
+        for(var i=0;i<ds.length;i++){
+            var all;
+            try{ all=ds[i].querySelectorAll('[id*="moreArrow" i],[class*="moreArrow" i]'); }
+            catch(e){
+                try{ all=ds[i].querySelectorAll('*'); }catch(e2){ all=[]; }
+            }
+            for(var j=0;j<all.length;j++){
+                var e=all[j];
+                var id=(e.id||'').toString().toLowerCase();
+                var cl=(e.className||'').toString().toLowerCase();
+                if(id.indexOf('morearrow')<0 && cl.indexOf('morearrow')<0) continue;
+                var cs=(e.ownerDocument.defaultView||window).getComputedStyle(e);
+                var vis=cs.display!=='none' && cs.visibility!=='hidden'
+                        && parseFloat(cs.opacity||'1')>0.1 && e.offsetParent!==null;
+                if(vis) return true;
+            }
+        }
+        return false;
+    """
+
     _CLICK_JS = _FIND_NEXT_FN + """
         var el=_findNext();
         if(el){ el.click(); return true; }
@@ -268,6 +296,15 @@ class CtSysClicker(TrainingAutoClicker):
         for clicking, so interaction slides are not skipped early."""
         try:
             return bool(self.driver.execute_script(self._COMPLETE_JS))
+        except Exception:
+            return False
+
+    def _interaction_pending(self):
+        """True when the slide still shows a 'more to do' indicator (the
+        moreArrow* elements CtSys renders in interaction content). Used to stop
+        a finished-media slide from advancing before its interaction is done."""
+        try:
+            return bool(self.driver.execute_script(self._INTERACTION_JS))
         except Exception:
             return False
 
@@ -405,10 +442,15 @@ class CtSysClicker(TrainingAutoClicker):
                     continue
                 not_found_streak = 0
 
-                # 4) Only proceed when the slide has GENUINELY earned credit:
-                #    a media slide that finished, OR the real completion signal
-                #    (orange activated Next visible / #pageComplete not hidden).
-                complete = media_was_playing or self._slide_complete()
+                # 4) Only proceed when the slide has GENUINELY earned credit.
+                #    The orange completed signal (visible completedNextBtn /
+                #    #pageComplete not hidden) always means credited. Otherwise a
+                #    finished-media slide counts as done ONLY if it has no pending
+                #    interaction indicator (moreArrow) - this stops slides that
+                #    play narration first and require interaction after from being
+                #    skipped the moment the audio ends.
+                complete = self._slide_complete() or (
+                    media_was_playing and not self._interaction_pending())
                 if complete:
                     interaction_since = None
                     interaction_beeped = False
@@ -424,7 +466,9 @@ class CtSysClicker(TrainingAutoClicker):
                         break
                     # Re-verify nothing changed during the wait.
                     if (self._question_present() or self._media_playing()
-                            or not (media_was_playing or self._slide_complete())):
+                            or not (self._slide_complete() or (
+                                media_was_playing
+                                and not self._interaction_pending()))):
                         continue
                     if self._click_next():
                         print("  ➡️  Clicked Next")
