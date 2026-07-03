@@ -50,17 +50,55 @@ class CtSysClicker(TrainingAutoClicker):
         }
     """
 
-    _NEXT_JS = _DOCS_FN + """
-        var ds=_docs();
-        for(var i=0;i<ds.length;i++){
-            var el=ds[i].getElementById('next-btn');
-            if(el){
-                var cs=(el.ownerDocument.defaultView||window).getComputedStyle(el);
-                return {cls:(el.className||'').toString().toLowerCase(),
-                        display:cs.display, visibility:cs.visibility};
+    # Locate the "advance" control. Two shapes exist:
+    #   deck slides:     <div id="next-btn" class="... submit-btn-on/off">
+    #   tutorial slides: <div class="cursor-pointer submit-btn-on"> text "Next"
+    #                    (no id) plus orange .completedNextBtn markers
+    # Both carry the submit-btn-on/off state; the quiz control (#submit-btn,
+    # text "SUBMIT") is explicitly excluded so we never treat it as Next.
+    _FIND_NEXT_FN = _DOCS_FN + """
+        function _findNext(){
+            var ds=_docs(), i, j;
+            // 1) canonical deck control
+            for(i=0;i<ds.length;i++){
+                var byId=ds[i].getElementById('next-btn');
+                if(byId) return byId;
             }
+            // 2) tutorial-style control: a stateful/clickable element whose
+            //    text is "Next" (not the quiz "Submit"). Resolve to the nearest
+            //    clickable/stateful container so a click actually advances.
+            for(i=0;i<ds.length;i++){
+                var d=ds[i], els;
+                try{ els=d.querySelectorAll(
+                    '.submit-btn-on, .submit-btn-off, .completedNextBtn'); }
+                catch(e){ continue; }
+                for(j=0;j<els.length;j++){
+                    var e=els[j];
+                    if(e.id==='submit-btn') continue;
+                    var t=(e.textContent||'').toLowerCase();
+                    if(t.indexOf('submit')>=0) continue;
+                    if(t.indexOf('next')<0) continue;
+                    var c=e;
+                    while(c && c!==d.body){
+                        var cl=(c.className||'').toString().toLowerCase();
+                        if(cl.indexOf('cursor-pointer')>=0 ||
+                           cl.indexOf('submit-btn-on')>=0 ||
+                           cl.indexOf('submit-btn-off')>=0) return c;
+                        c=c.parentElement;
+                    }
+                    return e;
+                }
+            }
+            return null;
         }
-        return null;
+    """
+
+    _NEXT_JS = _FIND_NEXT_FN + """
+        var el=_findNext();
+        if(!el) return null;
+        var cs=(el.ownerDocument.defaultView||window).getComputedStyle(el);
+        return {cls:(el.className||'').toString().toLowerCase(),
+                display:cs.display, visibility:cs.visibility};
     """
 
     _SUBMIT_JS = _DOCS_FN + """
@@ -96,12 +134,9 @@ class CtSysClicker(TrainingAutoClicker):
         }
     """
 
-    _CLICK_JS = _DOCS_FN + """
-        var ds=_docs();
-        for(var i=0;i<ds.length;i++){
-            var el=ds[i].getElementById('next-btn');
-            if(el){ el.click(); return true; }
-        }
+    _CLICK_JS = _FIND_NEXT_FN + """
+        var el=_findNext();
+        if(el){ el.click(); return true; }
         return false;
     """
 
@@ -196,7 +231,7 @@ class CtSysClicker(TrainingAutoClicker):
         print(f"  ℹ️  Next state: cls='{cls}' display='{st.get('display')}'")
         if "submit-btn-off" in cls:
             return False
-        if "submit-btn-on" in cls:
+        if "submit-btn-on" in cls or "completednextbtn" in cls:
             return True
         return False  # unknown -> treat as not ready (safer for credit)
 
