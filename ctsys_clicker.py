@@ -16,8 +16,6 @@ replaces the tangled multi-path loop with one deterministic loop:
 import time
 import random
 
-from selenium.webdriver.common.by import By
-
 from auto_clicker import TrainingAutoClicker
 from config import (
     SITE_NAME,
@@ -66,39 +64,51 @@ class CtSysClicker(TrainingAutoClicker):
         except Exception:
             return False
 
-    def _find(self, element_id):
-        """Return a visible element by id, or None. Uses Selenium's
-        is_displayed() (robust) rather than a raw offsetWidth check."""
-        try:
-            el = self.driver.find_element(By.ID, element_id)
-        except Exception:
-            return None
-        try:
-            if not el.is_displayed():
-                return None
-        except Exception:
-            pass
-        return el
+    # Read the Next control by ID (getElementById is reliable on CtSys even when
+    # the element reports a zero box, which breaks Selenium's is_displayed()).
+    _NEXT_JS = """
+        var el = document.getElementById('next-btn');
+        if (!el) return null;
+        var cs = window.getComputedStyle(el);
+        return {cls: (el.className || '').toString().toLowerCase(),
+                display: cs.display,
+                visibility: cs.visibility};
+    """
+
+    # Read the quiz/finish control by ID. "shown" ignores element size (the
+    # control can be a zero-box flex container) and keys on display/visibility.
+    _SUBMIT_JS = """
+        var el = document.getElementById('submit-btn');
+        if (!el) return null;
+        var cs = window.getComputedStyle(el);
+        var shown = cs.display !== 'none' && cs.visibility !== 'hidden'
+                    && parseFloat(cs.opacity || '1') > 0.1
+                    && el.offsetParent !== null;
+        return {text: (el.textContent || '').trim(), shown: shown};
+    """
 
     def _question_present(self):
-        el = self._find("submit-btn")
-        if el is None:
-            return False
         try:
-            text = (el.text or "").lower()
+            st = self.driver.execute_script(self._SUBMIT_JS)
         except Exception:
-            text = ""
+            return False
+        if not st or not st.get("shown"):
+            return False
+        text = (st.get("text") or "").lower()
         if any(x.lower() in text for x in SUBMIT_EXCLUDE_KEYWORDS):
             return False
         return True
 
     def _next_ready(self):
-        """True = highlighted/ready, False = present but not ready, None = not shown."""
-        el = self._find("next-btn")
-        if el is None:
+        """True = highlighted/ready, False = present but not ready, None = not in DOM."""
+        try:
+            st = self.driver.execute_script(self._NEXT_JS)
+        except Exception:
             return None
-        cls = (el.get_attribute("class") or "").lower()
-        print(f"  ℹ️  Next state: cls='{cls}'")
+        if not st:
+            return None
+        cls = st.get("cls") or ""
+        print(f"  ℹ️  Next state: cls='{cls}' display='{st.get('display')}'")
         if "submit-btn-off" in cls:
             return False
         if "submit-btn-on" in cls:
@@ -106,12 +116,12 @@ class CtSysClicker(TrainingAutoClicker):
         return False  # unknown -> treat as not ready (safer for credit)
 
     def _click_next(self):
-        el = self._find("next-btn")
-        if el is None:
-            return False
         try:
-            self.driver.execute_script("arguments[0].click();", el)
-            return True
+            ok = self.driver.execute_script(
+                "var el=document.getElementById('next-btn');"
+                "if(el){el.click();return true;}return false;"
+            )
+            return bool(ok)
         except Exception as e:
             print(f"⚠️  Could not click Next: {e}")
             return False
