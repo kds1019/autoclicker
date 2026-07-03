@@ -174,14 +174,15 @@ class CtSysClicker(TrainingAutoClicker):
             return True
         return False  # unknown -> treat as not ready (safer for credit)
 
-    def _diagnose(self):
-        """Print where #next-btn / #submit-btn actually live (top vs frames) and
-        also write it to ctsys_diagnostic.txt so it can be shared without needing
-        to scroll/copy the console."""
+    def _diagnose(self, verbose=True):
+        """Capture where #next-btn / #submit-btn live and their state; write to
+        ctsys_diagnostic.txt (always, so it holds the latest state) and print to
+        the console when verbose."""
         try:
             d = self.driver.execute_script(self._DIAG_JS)
         except Exception as e:
-            print(f"  ⚠️  Diagnostic failed: {e}")
+            if verbose:
+                print(f"  ⚠️  Diagnostic failed: {e}")
             return
 
         def _fmt(name, c):
@@ -198,16 +199,19 @@ class CtSysClicker(TrainingAutoClicker):
             _fmt("submit-btn", d.get("submit")),
         ]
 
-        for ln in lines:
-            print("  " + ln)
+        if verbose:
+            for ln in lines:
+                print("  " + ln)
 
         try:
             path = os.path.join(os.getcwd(), "ctsys_diagnostic.txt")
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write("\n".join(lines) + "\n")
-            print(f"  📝 Saved diagnostic to: {path}")
+            if verbose:
+                print(f"  📝 Saved diagnostic to: {path}")
         except Exception as e:
-            print(f"  ⚠️  Could not write diagnostic file: {e}")
+            if verbose:
+                print(f"  ⚠️  Could not write diagnostic file: {e}")
 
     def _click_next(self):
         try:
@@ -262,8 +266,9 @@ class CtSysClicker(TrainingAutoClicker):
                 ready = self._next_ready()
                 if ready is None:
                     print("  🔎 Next button not found in any frame yet - waiting...")
-                    if not_found_streak == 0:
-                        self._diagnose()  # one-time layout dump so we can locate it
+                    # Print the layout once, but refresh the file every check so
+                    # it always holds the latest control state.
+                    self._diagnose(verbose=(not_found_streak == 0))
                     not_found_streak += 1
                     time.sleep(POLL_INTERVAL)
                     continue
