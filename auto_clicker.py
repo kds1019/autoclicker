@@ -325,6 +325,13 @@ class TrainingAutoClicker:
         print(f"  ℹ️  Next button state: {info}")
 
         cls = (info.get("cls") or "").lower()
+        # CtSys player marks the Next control explicitly: "submit-btn-on" when
+        # the slide is complete (highlighted/clickable) and "submit-btn-off"
+        # while it is still in progress. Key on that directly.
+        if "submit-btn-off" in cls:
+            return False
+        if "submit-btn-on" in cls:
+            return True
         if info.get("ariaDisabled") == "true":
             return False
         if info.get("disabledAttr") is not None:
