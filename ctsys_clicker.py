@@ -134,6 +134,32 @@ class CtSysClicker(TrainingAutoClicker):
         }
     """
 
+    # True "slide credited / you may proceed" signal. On CtSys the plain
+    # <div id="next-btn"> carries submit-btn-on even BEFORE the slide is done
+    # (which caused early skipping on interaction slides). The genuine signal is
+    # the orange "activated" Next (.completedNextBtn) becoming VISIBLE, or the
+    # #pageComplete flag no longer being hidden.
+    _COMPLETE_JS = _DOCS_FN + """
+        var ds=_docs();
+        for(var i=0;i<ds.length;i++){
+            var els;
+            try{ els=ds[i].querySelectorAll('.completedNextBtn'); }catch(e){ els=[]; }
+            for(var j=0;j<els.length;j++){
+                var e=els[j];
+                var cs=(e.ownerDocument.defaultView||window).getComputedStyle(e);
+                var vis=cs.display!=='none' && cs.visibility!=='hidden'
+                        && parseFloat(cs.opacity||'1')>0.1 && e.offsetParent!==null;
+                if(vis) return true;
+            }
+            var pc=ds[i].getElementById('pageComplete');
+            if(pc){
+                var c=(pc.className||'').toString().toLowerCase();
+                if(c.indexOf('hidden')<0) return true;
+            }
+        }
+        return false;
+    """
+
     _CLICK_JS = _FIND_NEXT_FN + """
         var el=_findNext();
         if(el){ el.click(); return true; }
@@ -236,6 +262,15 @@ class CtSysClicker(TrainingAutoClicker):
             return True
         return False  # unknown -> treat as not ready (safer for credit)
 
+    def _slide_complete(self):
+        """True when the slide has genuinely earned credit (orange activated
+        Next visible, or #pageComplete no longer hidden). This is the real gate
+        for clicking, so interaction slides are not skipped early."""
+        try:
+            return bool(self.driver.execute_script(self._COMPLETE_JS))
+        except Exception:
+            return False
+
     def _diagnose(self, verbose=True):
         """Capture where #next-btn / #submit-btn live and their state; write to
         ctsys_diagnostic.txt (always, so it holds the latest state) and print to
@@ -308,6 +343,10 @@ class CtSysClicker(TrainingAutoClicker):
         not_found_streak = 0  # throttle the diagnostic so it prints once, not every loop
         paused_hint_shown = False
         last_paused_diag = 0.0
+        media_was_playing = False   # this slide had video/audio that has finished
+        interaction_since = None    # when we first saw an unfinished interaction slide
+        interaction_beeped = False  # beep once per interaction slide, not repeatedly
+        interaction_alert_after = 12  # seconds of "stuck, needs you" before beeping
         try:
             while self.running:
                 if self.paused:
@@ -341,13 +380,18 @@ class CtSysClicker(TrainingAutoClicker):
                     print("✅ Input handled - resuming...")
                     continue
 
-                # 2) Media still playing -> let the slide finish (for credit)
+                # 2) Media still playing -> let the slide finish (for credit).
+                #    Remember that this slide had media, so once it ends we treat
+                #    the slide as credited (media slides don't need interaction).
                 if self._media_playing():
+                    media_was_playing = True
+                    interaction_since = None
+                    interaction_beeped = False
                     print("  🎬 Slide still playing - waiting...")
                     time.sleep(POLL_INTERVAL)
                     continue
 
-                # 3) Is Next highlighted (slide complete)?
+                # 3) Locate the Next control at all.
                 ready = self._next_ready()
                 if ready is None:
                     print("  🔎 Next button not found in any frame yet - waiting...")
@@ -355,33 +399,57 @@ class CtSysClicker(TrainingAutoClicker):
                     # it always holds the latest control state.
                     self._diagnose(verbose=(not_found_streak == 0))
                     not_found_streak += 1
+                    interaction_since = None
+                    interaction_beeped = False
                     time.sleep(POLL_INTERVAL)
                     continue
                 not_found_streak = 0
-                if not ready:
-                    print("  ⏳ Next not highlighted yet (slide in progress) - waiting...")
-                    time.sleep(POLL_INTERVAL)
+
+                # 4) Only proceed when the slide has GENUINELY earned credit:
+                #    a media slide that finished, OR the real completion signal
+                #    (orange activated Next visible / #pageComplete not hidden).
+                complete = media_was_playing or self._slide_complete()
+                if complete:
+                    interaction_since = None
+                    interaction_beeped = False
+                    delay = random.randint(READY_TO_CLICK_MIN, READY_TO_CLICK_MAX)
+                    print(f"  ✅ Slide complete - waiting {delay}s before clicking Next...")
+                    waited = 0
+                    while waited < delay and self.running:
+                        time.sleep(1)
+                        waited += 1
+                        if self._question_present() or self._media_playing():
+                            break
+                    if not self.running:
+                        break
+                    # Re-verify nothing changed during the wait.
+                    if (self._question_present() or self._media_playing()
+                            or not (media_was_playing or self._slide_complete())):
+                        continue
+                    if self._click_next():
+                        print("  ➡️  Clicked Next")
+                        media_was_playing = False
+                        time.sleep(0.5)
+                        self._mute_quiet()
                     continue
 
-                # 4) Highlighted: wait a random human-like time, then click
-                delay = random.randint(READY_TO_CLICK_MIN, READY_TO_CLICK_MAX)
-                print(f"  ✅ Slide complete - waiting {delay}s before clicking Next...")
-                waited = 0
-                while waited < delay and self.running:
-                    time.sleep(1)
-                    waited += 1
-                    if self._question_present() or self._media_playing():
-                        break
-                if not self.running:
-                    break
-                # Re-verify nothing changed during the wait
-                if (self._question_present() or self._media_playing()
-                        or self._next_ready() is not True):
-                    continue
-                if self._click_next():
-                    print("  ➡️  Clicked Next")
-                    time.sleep(0.5)
-                    self._mute_quiet()
+                # 5) Next is present but the slide is NOT complete and no media is
+                #    playing -> it needs YOU to interact. Beep once and wait; it
+                #    will continue on its own once you complete the interaction.
+                if interaction_since is None:
+                    interaction_since = time.time()
+                elif (not interaction_beeped
+                      and (time.time() - interaction_since) >= interaction_alert_after):
+                    print("\n" + "!" * 60)
+                    print("🖐️  INTERACTION NEEDED! This slide needs you to interact")
+                    print("    with it (click/explore) to get credit. Do it, and I'll")
+                    print("    continue automatically once the slide is complete.")
+                    print("!" * 60)
+                    self.play_alert()
+                    interaction_beeped = True
+                else:
+                    print("  ⏳ Waiting for you to complete this slide's interaction...")
+                time.sleep(POLL_INTERVAL)
         except KeyboardInterrupt:
             print("\n\n🛑 Stopped by user (CTRL+C)")
         finally:
