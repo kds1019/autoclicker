@@ -185,6 +185,7 @@ class CtSysClicker(TrainingAutoClicker):
         cands.sort(function(a,b){ return (b.vis?1:0)-(a.vis?1:0); });
         return {url:document.location.href, docs:ds.length,
                 next:detail('next-btn'), submit:detail('submit-btn'),
+                pageComplete:detail('pageComplete'),
                 candidates:cands};
     """
 
@@ -258,6 +259,7 @@ class CtSysClicker(TrainingAutoClicker):
             f"🩺 DIAG docs={d.get('docs')}",
             _fmt("next-btn", d.get("next")),
             _fmt("submit-btn", d.get("submit")),
+            _fmt("pageComplete", d.get("pageComplete")),
             "  candidates (visible first):",
         ]
         for c in (d.get("candidates") or []):
