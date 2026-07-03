@@ -780,7 +780,12 @@ class TrainingAutoClicker:
 
 
 if __name__ == "__main__":
-    clicker = TrainingAutoClicker()
+    # Use the clean CtSys clicker when configured for CtSys, else the default.
+    if TRAINING_SITE == "ctsys":
+        from ctsys_clicker import CtSysClicker
+        clicker = CtSysClicker()
+    else:
+        clicker = TrainingAutoClicker()
     clicker.run()
 
 

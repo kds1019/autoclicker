@@ -6,7 +6,19 @@ from tkinter import ttk, scrolledtext
 import threading
 import sys
 from auto_clicker import TrainingAutoClicker
-from config import SITE_NAME
+from config import SITE_NAME, TRAINING_SITE
+
+
+def make_clicker(gui_mode=True):
+    """Pick the right clicker for the configured site.
+
+    CtSys uses a clean, single-path clicker; other sites (FlightSafety) keep
+    using the original TrainingAutoClicker.
+    """
+    if TRAINING_SITE == "ctsys":
+        from ctsys_clicker import CtSysClicker
+        return CtSysClicker(gui_mode=gui_mode)
+    return TrainingAutoClicker(gui_mode=gui_mode)
 
 class AutoClickerGUI:
     def __init__(self):
@@ -138,7 +150,7 @@ class AutoClickerGUI:
         self.launch_btn.config(state='disabled')
 
         def launch_thread():
-            self.clicker = TrainingAutoClicker(gui_mode=True)
+            self.clicker = make_clicker(gui_mode=True)
             if self.clicker.setup_browser():
                 self.log("✅ Browser launched successfully!")
                 self.log("📋 Please login and launch your course...")

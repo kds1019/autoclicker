@@ -48,6 +48,15 @@ FLIGHTSAFETY_URL = TRAINING_SITES["flightsafety"]["url"]
 MIN_CLICK_DELAY = 1   # Minimum delay (seconds)
 MAX_CLICK_DELAY = 20  # Maximum delay (seconds)
 
+# CtSys mode only: after the Next button highlights (slide complete), wait a
+# RANDOM human-like time in this range before actually clicking it. This makes
+# the timing look natural and lets the completed slide register for credit.
+READY_TO_CLICK_MIN = 3   # Minimum wait after highlight (seconds)
+READY_TO_CLICK_MAX = 12  # Maximum wait after highlight (seconds)
+
+# CtSys mode only: how often to re-check the slide state while waiting (seconds)
+POLL_INTERVAL = 3
+
 # ============================================================================
 # BUTTON DETECTION KEYWORDS
 # ============================================================================
